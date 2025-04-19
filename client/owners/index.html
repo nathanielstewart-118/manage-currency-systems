@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Owner Page</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card-custom {
+      transition: transform 0.2s ease-in-out;
+    }
+    .card-custom:hover {
+      transform: scale(1.02);
+      background-color: aquamarine;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-5">
+  <!-- Input Section -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-8 text-center">
+      <h2 class="mb-4">Enter an Owner Sun</h2>
+      <div class="input-group">
+        <input id="addressInput" type="text" class="form-control" placeholder="Enter owner sun...">
+        <button id="searchBtn" class="btn btn-primary">Search</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div id="results" class="row gy-4"></div>
+</div>
+
+<!-- Bootstrap JS and basic logic -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const fetch_url = "/owners"
+  const searchBtn = document.getElementById('searchBtn');
+  const results = document.getElementById('results');
+  let address = ""
+
+  searchBtn.addEventListener('click', async () => {
+    address = document.getElementById('addressInput').value.trim();
+    if (!address) return;
+
+    // Clear previous results
+    results.innerHTML = '';
+
+    // Simulate fetch (replace with actual fetch if needed)
+    fetch(fetch_url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        command: "supplier",
+        owner_sun: address,
+        tid: "t1",
+        auth: "7b3291a872c822a86045a00b6087fc92c315136c51fd9aab0dc22ac9e966",
+      })
+    })
+    .then(response => response.json())
+    .then(data => displayList(data.data))
+    .catch(error => console.log(error))
+
+    
+  });
+
+  const handleClickCard = (tid, owner_sun) => {
+
+    window.location.assign("/owners/supply-execution?tid=" + tid + "&owner_sun=" + owner_sun)
+  }
+
+
+  const displayList = dataList => {
+    console.log(dataList)
+    dataList.terminals.forEach(item => {
+      const col = document.createElement('div');
+      col.className = 'col-md-4';
+      const products = dataList.restocks.filter(one => one.tid == item.tid)
+      const terminals = dataList.terminals.filter(one => one.tid == item.tid)
+      let current_weight = 0, product_name = " - "
+      if(products.length > 0) { 
+        current_weight = products[0].current_weight
+        
+      }
+      if(terminals.length > 0) product_name = terminals[0].product_name
+      col.innerHTML = 
+        '<div class="card card-custom shadow-sm h-100" onclick="handleClickCard(' + "'" + item.tid + "', '" + address + "'" + ')">' +
+          '<div class="card-body">' +
+            '<h5 class="card-title">Terminal: ' + item.tid + '</h5>' +
+            '<p class="card-text"><strong>Current Weight:</strong> ' + current_weight + '</p>' + 
+            '<p class="card-text"><strong>Product Name:</strong> ' + product_name + '</p></div></div>'
+      ;
+
+      results.appendChild(col);
+    });
+  }
+</script>
+
+</body>
+</html>

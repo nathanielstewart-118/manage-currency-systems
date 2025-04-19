@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Service Utilize Numbers</title>
+    <!-- Include Bootstrap 4 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <style>
+    .container {
+      max-width: 95%;
+    }
+    .display {
+      display: none;
+    }
+  </style>
+  <body>
+    <div class="container mt-5">
+      <h1>Edit Config Data</h1>
+      <div class="col-md-3 form-group mb-5">
+        <select
+          class="form-select"
+          id="area_select"
+          aria-label="Default select example"
+        >
+          <option value="0" selected>Select Area</option>
+        </select>
+      </div>
+      <!-- Row for two cards -->
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>ID</th>
+            <th>AREA</th>
+            <th>server</th>
+            <th>control<br />MIDnumber</th>
+            <th width="10px">control<br />SUNnumber</th>
+            <th>auth</th>
+            <th>ifserver<br />noreaction</th>
+            <th>servicetype</th>
+            <th>serviceprice</th>
+            <th>etc</th>
+            <th>action</th>
+          </tr>
+        </thead>
+        <tbody id="configList"></tbody>
+      </table>
+
+      <!-- Form to edit the JSON data -->
+      <form id="configForm" class="mt-4 display">
+        <div class="form-group">
+          <label for="server">Server URL:</label>
+          <input type="text" class="form-control" id="server" name="server" />
+        </div>
+
+        <div class="form-group">
+          <label for="controlMIDnumber">Control MID Number:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="controlMIDnumber"
+            name="controlMIDnumber"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="controlSUNnumber">Control SUN Number:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="controlSUNnumber"
+            name="controlSUNnumber"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="auth">Ifservernoreaction:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="ifservernoreaction"
+            name="ifservernoreaction"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="auth">Auth:</label>
+          <input type="text" class="form-control" id="auth" name="auth" />
+        </div>
+
+        <div class="form-group">
+          <label for="servicetype">Service Type:</label>
+          <input
+            type="text"
+            class="form-control"
+            id="servicetype"
+            name="servicetype"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="serviceprice">Service Price:</label>
+          <input
+            type="number"
+            class="form-control"
+            id="serviceprice"
+            name="serviceprice"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="etc">Etc:</label>
+          <input type="text" class="form-control" id="etc" name="etc" />
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          style="margin-top: 20px; float: right"
+          id="saveButton"
+        >
+          Save JSON
+        </button>
+      </form>
+    </div>
+
+    <!-- Include Bootstrap 4 JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+      const selectElement = document.getElementById("area_select");
+      const data = new URLSearchParams();
+      data.append("command", "init")
+      data.append("tid", "12345");
+      data.append("token", "secret-token");
+
+      const init = () => {
+        fetch("http://localhost:8000/com", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            command: "init",
+            tid: "12345",
+            token: "secret-tokens"
+          }),
+        })
+        .then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.log(error))
+      }
+      init()
+
+      selectElement.addEventListener("change", (event) => {
+        const selectedValue = event.target.value;
+        getConfigList(selectedValue);
+      });
+      document.addEventListener("DOMContentLoaded", function () {
+        getAreaList();
+        getConfigList("all");
+      });
+      function getConfigList(area) {
+        fetch("https://48v.me/~minifooko/cgi-bin/getConfigList.py?area=" + area) // This server-side script lists the config files
+          .then((response) => response.json())
+          .then((data) => {
+            const configListElement = document.getElementById("configList");
+            configListElement.innerHTML = "";
+            configFiles = data.config_files;
+            configFiles.forEach((configFile, index) => {
+              const listItemTr = document.createElement("tr");
+
+              listItemTr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${configFile.terminal_id}</td>
+                <td>${configFile.service_area}</td>
+                <td>${configFile.serverURL}</td>
+                <td>${configFile.controlMIDnumber}</td>
+                <td>${configFile.controlSUNnumber}</td>
+                <td>${configFile.auth}</td>
+                <td>${configFile.ifservernoreaction}</td>
+                <td>${configFile.servicetype}</td>
+                <td>${configFile.serviceprice}</td>
+                <td>${configFile.etc}</td>
+                <td><button class="btn btn-primary" onclick="editConfig(${
+                  configFile.id
+                })">edit</button></td>
+              `;
+              configListElement.appendChild(listItemTr);
+            });
+          })
+          .catch((error) => {
+            console.error("Error fetching config list:", error);
+          });
+      }
+
+      function getAreaList() {
+        fetch("https://48v.me/~minifooko/cgi-bin/getAreaList.py") // This server-side script lists the config files
+          .then((response) => response.json())
+          .then((data) => {
+            const configListElement = document.getElementById("area_select");
+            configFiles = data.config_files;
+            configFiles.forEach((configFile, index) => {
+              const listItemOption = document.createElement("option");
+              listItemOption.value = configFile.service_area;
+              listItemOption.innerHTML = `
+                ${configFile.service_area}
+              `;
+              configListElement.appendChild(listItemOption);
+            });
+          })
+          .catch((error) => {
+            console.error("Error fetching config list:", error);
+          });
+      }
+      // Fetch the selected config file data and populate the form
+      function editConfig(id) {
+        $("#saveButton").val(id);
+        $("#configForm").removeClass("display");
+
+        fetch(`https://48v.me/~minifooko/cgi-bin/getConfigData.py?id=${id}`)
+          .then((response) => response.json())
+          .then((data) => {
+            configData = data.terminal_data[0];
+            // Populate the form with the data from the selected config file
+            document.getElementById("server").value =
+              configData.serverURL || "";
+            document.getElementById("controlMIDnumber").value =
+              configData.controlMIDnumber || "";
+            document.getElementById("controlSUNnumber").value =
+              configData.controlSUNnumber || "";
+            document.getElementById("ifservernoreaction").value =
+              configData.ifservernoreaction || "";
+            document.getElementById("auth").value = configData.auth || "";
+            document.getElementById("servicetype").value =
+              configData.servicetype || "";
+            document.getElementById("serviceprice").value =
+              configData.serviceprice || "";
+            document.getElementById("etc").value = configData.etc || "";
+          })
+          .catch((error) => {
+            console.error("Error fetching config data:", error);
+          });
+      }
+
+      // Optional: Handle the save button click if you want to send the updated data somewhere
+      document
+        .getElementById("saveButton")
+        .addEventListener("click", function () {
+          // Collect form data
+
+          const formData = {
+            id: document.getElementById("saveButton").value,
+            serverURL: document.getElementById("server").value,
+            controlMIDnumber: document.getElementById("controlMIDnumber").value,
+            controlSUNnumber: document.getElementById("controlSUNnumber").value,
+            auth: document.getElementById("auth").value,
+            servicetype: document.getElementById("servicetype").value,
+            ifservernoreaction:
+              document.getElementById("ifservernoreaction").value,
+            serviceprice: parseFloat(
+              document.getElementById("serviceprice").value
+            ), // Ensure this is a number
+            etc: document.getElementById("etc").value,
+          };
+          console.log(JSON.stringify(formData));
+          // Send POST request
+          fetch("https://48v.me/~minifooko/cgi-bin/setConfigData.py", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData), // Convert data to JSON string
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(
+                  "Network response was not ok: " + response.statusText
+                );
+              }
+              return response.json(); // Parse JSON response
+            })
+            .then((data) => {
+              console.log("Success:", data);
+              alert("Configuration changed successfully!");
+              location.reload();
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("Failed to save configuration. Please try again.");
+            });
+        });
+    </script>
+  </body>
+</html>
