@@ -1,9 +1,7 @@
-import asyncio
 from http.server import HTTPServer
 from .handler import RouterHandler
 from dotenv import load_dotenv
 import os
-import mysql.connector
 
 load_dotenv()
 

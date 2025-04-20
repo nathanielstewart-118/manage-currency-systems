@@ -1,6 +1,7 @@
 import json 
 import random
 import barcode
+from barcode.codex import Code39 
 from barcode.writer import ImageWriter
 from io import BytesIO
 import base64
@@ -64,7 +65,16 @@ def gen_random_digits(number):
    return str(random.randint(10**(number - 1), 10 ** number - 1)) 
 
 def gen_barcode(data):
-    barcode_class = barcode.get_barcode_class('code128')
+    barcode_image = Code39(data, writer=ImageWriter())
+    print(data)
     buffer = BytesIO()
-    barcode_class(data, writer=ImageWriter()).write(buffer)
+    barcode_image.write(buffer)
+    # barcode_class(data, writer=ImageWriter()).write(buffer)
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+def send_response(handler, status_code, content_type, data):
+    handler.send_response(status_code)
+    handler.send_header("Content-type",content_type)
+    handler.end_headers()
+    handler.wfile.write(data)

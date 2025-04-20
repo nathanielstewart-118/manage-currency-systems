@@ -17,7 +17,6 @@ def handle_get(handler, path):
         view = top_path / 'client/admin/log.html'
 
     content = get_content(view)
-    print(content)
     handler.send_response(200)
     handler.send_header("Content-type", "text/html")
     handler.end_headers()
@@ -25,14 +24,14 @@ def handle_get(handler, path):
 
 
 def handle_post(handler, form, path):
+    result = ""
     if path == "/admin/sun":
         command = form.get("command")
         if command == "get_suns":
             result = get_suns(handler.server.db, form)
-    elif path == "/admin/log":
+    elif path == "/admin/logs":
         result = get_logs(handler.server.db, form)
-    print(path)
-    return json.dumps(result, default=str)
+    return result
     
 def get_suns(db, form):
     cursor = db.cursor(dictionary=True)
@@ -63,6 +62,19 @@ def get_suns(db, form):
     }
 
 def get_logs(db, form):
-    return {}
+    cursor = db.cursor(dictionary=True)
+    date = form.get("date") or ""
+    if date == "":
+        return {
+            "success": False,
+            "messsage": "Incorrect month"
+        }
+    sql = f"SELECT * FROM logs WHERE created_at BETWEEN '{date}-01' AND '{date}-31 23:59:59'"
+    cursor.execute(sql)
+    logs = cursor.fetchall()
+    return {
+        "success": True,
+        "logs": logs
+    }
 
 

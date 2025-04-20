@@ -157,18 +157,36 @@
   }
 
   const handleClickRefreshDB = () => {
-    fetch(apiEndPoint, {
+    // fetch("/com", {
+    //   method: "POST",
+    //   header: {
+    //     "Content-Type": "application/json"
+    //   },
+    //   body: JSON.stringify({
+    //     command: "refresh_db"
+    //   })
+    // })
+    // .then(response=> response.json())
+    // .then(data => console.log(data))
+    // .catch(error => console.log(error))
+
+    fetch("/owners", {
       method: "POST",
-      header: {
+      headers: {
         "Content-Type": "application/json"
       },
-      data: JSON.stringify({
-        command: "refresh_db"
+      body: JSON.stringify({
+        command: "supply_end",
+        sun: "10372410",
+        tid: "t4",
+        owner_sun: "00000000",
+        auth: "59a44cd0d3b545fb19844445fd7361fd4c21ce87eae7da9301153460a1b3",
+        gram: 600,
       })
     })
     .then(response=> response.json())
     .then(data => console.log(data))
-    .catch(error => console.log(error) )
+    .catch(error => console.log(error))
   }
 </script>
 

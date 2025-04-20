@@ -27,7 +27,7 @@ def handle_get(handler, path):
 def handle_post(handler, form):
     command = form.get("command")
     print("This is post handler")
-    result = {}
+    result = ""
     if command == "supplier":
         result = handle_supplier_request(handler.server.db, form)
     elif command == "supply_open":
@@ -41,9 +41,7 @@ def handle_post(handler, form):
     elif command == "save_max_sales_amount":
         result = handle_save_max_amounts(handler.server.db, form)
         
-    common.send_base(handler)
-    print(result)
-    handler.wfile.write(json.dumps(result, default=str).encode())
+    return result
 
 def handle_supplier_request(db, form):
     try:
@@ -87,7 +85,7 @@ def handle_supply_open(db, form):
     target_tid = form.get("target_tid")
     onetime_sun = gen_sun(3, "")
     cursor = db.cursor(dictionary=True)
-    sql = f"insert into onetime_suns(onetime_sun, tid, owner_sun, created_at, updated_at) values('{onetime_sun}', '{target_tid}', '{owner_sun}', '{datetime.now()}', '{datetime.now()}')"
+    sql = f"INSERT INTO onetime_suns(onetime_sun, tid, owner_sun, created_at, updated_at) VALUES('{onetime_sun}', '{target_tid}', '{owner_sun}', '{datetime.now()}', '{datetime.now()}')"
     cursor.execute(sql)
     db.commit()    
     sql = f"SELECT * FROM restocks WHERE tid = '{target_tid}'"
@@ -115,18 +113,10 @@ def handle_supply_start(db, form):
     sql = f"select * from onetime_suns where onetime_sun = '{onetime_sun}' and tid = '{tid}'"
     cursor.execute(sql)
     results = cursor.fetchall()
-    # data = {
-    #     "success": False
-    # } if len(results) == 0 else data = { "success": True }
+    return { "success": True } if len(results) == 0 else { "success": False }
     
-    if len(results) == 0:
-        data = { "success": True }
-    else:
-        data = { "success": False }
-    return data
     
 def handle_supply_end(db, form):
-    print("This is handle_supply_end")
     onetime_sun = form.get("onetime_sun")
     tid = form.get("tid")
     current_weight = form.get("gram")
@@ -154,15 +144,18 @@ def handle_supply_end(db, form):
 
 def handle_supply_close(db, form):
     try:
-        onetime_sun = form.get("onetime_sun")
+        onetime_sun = form.get("onetime_sun") or ""
+        tid = form.get("tid") or ""
         cursor = db.cursor(dictionary=True)
-        sql = f"DELETE * FROM onetime_suns WHERE onetime_sun = '{onetime_sun}'"
+        sql = f"DELETE FROM onetime_suns WHERE onetime_sun = '{onetime_sun}'"
         cursor.execute(sql)
         db.commit()
         msg = json.dumps({
             "command": "supply_close",
-            "onetime_sun": onetime_sun
+            "onetime_sun": onetime_sun,
+            "tid": tid,
         })
+        
         asyncio.run(send_to_all(msg))
     except Exception as e:
         print(e)
@@ -195,7 +188,6 @@ def handle_save_max_amounts(db, form):
                 db.commit()
             elif len(records) == 0:
                 sql = f"INSERT INTO restocks(tid, currency_id, current_weight, max_sales_amount, created_at, updated_at) VALUES('{tid}', {currency_id}, {current_weight}, {max_sales_amount}, '{datetime.now()}', '{datetime.now()}')"
-                print(sql)
                 cursor.execute(sql)
                 db.commit()
             else:
@@ -207,4 +199,4 @@ def handle_save_max_amounts(db, form):
         print(e)
         data = { "success": False, "data": str(e) }
     return data    
-        
+

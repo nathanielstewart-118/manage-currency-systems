@@ -21,7 +21,7 @@ def check_suns(db):
         print(e)    
 
 def start_scheduler(db):
-    schedule.every(10).seconds.do(lambda: check_suns(db))
+    schedule.every(10).minutes.do(lambda: check_suns(db))
     while True:
         schedule.run_pending()
         time.sleep(1)

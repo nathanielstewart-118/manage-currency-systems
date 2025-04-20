@@ -12,27 +12,26 @@ delay_hour = float(os.getenv("DELAY_HOUR"))
 def handle(form, handler):
 
     command = form.get("command")
-    handler.send_response(200)
-    handler.send_header("Content-type", "application/json")
-    handler.end_headers()
+    result = ""
     if command == "init":
-        return init(form, handler)
-    elif command == "req_token":
-        return req_token(form, handler)
+        result =  init(form, handler)
+    elif command == "reqtoken":
+        result = req_token(form, handler)
     elif command == 'req_sun':
-        return req_sun(form, handler)
-    elif command == 'req_config':
-        return req_config(form, handler)
+        result = req_sun(form, handler)
+    elif command == 'reqconfig':
+        result = req_config(form, handler)
     elif command == 'service_in':
-        return service_in(form, handler)
+        result = service_in(form, handler)
     elif command == 'service_out':
-        return service_out(form, handler)
+        result = service_out(form, handler)
     elif command == 'service_togo':
-        return service_togo(form, handler)
+        result = service_togo(form, handler)
     elif command == 'refresh_db':
-        return refresh_db(handler.server.db)
+        result = refresh_db(handler.server.db)
     elif command == 'life_signal':
-        return life_signal(handler, form, handler.server.db)
+        result = life_signal(handler, form, handler.server.db)
+    return result
     
 def init(form, handler):
     try:
@@ -41,13 +40,11 @@ def init(form, handler):
         }
         tid = form.get('tid')
         token = form.get('token')
-        print(tid, token)
         cursor = handler.server.db.cursor(dictionary=True)
-        
+        print("This is start of init")
         sql = f"select * from terminals where tid='{tid}'"
         cursor.execute(sql)
         terminals = cursor.fetchall()
-        
         if len(terminals) == 0:
             data = {
                 "success": False,
@@ -64,7 +61,7 @@ def init(form, handler):
                     "data": "token mismatch"
                 }
         else:
-            sql = f"select prices.currency_id, terminals.amount * prices.price as max_sales_amount from terminals inner join prices on ( terminals.product_id = prices.product_id) where tid='{tid}'"
+            sql = f"SELECT * FROM RESTOCKS where tid='{tid}'"
             cursor.execute(sql)
             total_values = cursor.fetchall()
             
@@ -107,7 +104,7 @@ def init(form, handler):
             "success": False,
             "data": str(e)
         }
-    return json.dumps(data).encode()
+    return data
         
 def req_token(form, handler):
     try:
@@ -126,22 +123,23 @@ def req_token(form, handler):
             data["data"] = "no terminal with that id"
         elif len(records) == 1:
             key = form.get("key")
-            if key == records[0].get("key"):
+            if key == records[0].get("key_string"):
                 token = secrets.token_hex(16)
-                data["data"] = token
+                data = { 
+                    "success": True,
+                    "token": token,
+                }
             else:
                 data["success"] = False
                 data["data"] = "The key field doesn't match!"
         else:
             data["success"] = False
             data["data"] = "duplicated terminal id"
-        print(type(records), records)
-        data["data"] = records
         
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, default=str)
+    return data
         
 
 def req_config(form, handler):
@@ -159,7 +157,7 @@ def req_config(form, handler):
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, default=str)
+    return data
         
 def req_sun(form, handler):
     data = {
@@ -209,7 +207,7 @@ def req_sun(form, handler):
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, default=str)
+    return data
         
 def service_in(form, handler):
     data = {
@@ -257,7 +255,7 @@ def service_in(form, handler):
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, default=str)
+    return data
         
 def service_out(form, handler):
     data = {
@@ -267,6 +265,7 @@ def service_out(form, handler):
         sun = form.get("sun")
         gram = form.get("gram")
         max_sales_amount = form.get("max_sales_amount")
+        cur_sys_id = form.get("currency_id")
         db = handler.server.db
         cursor = db.cursor(dictionary=True)
         sql = f"select * from suns where sun = '{sun}'"
@@ -283,7 +282,7 @@ def service_out(form, handler):
                 # update the total value
                 
                 
-                sql = f"update suns set updated_at = '{datetime.now()}', gram = {gram}, max_sales_amount = {max_sales_amount} where id = {sun["id"]}"
+                sql = f"update suns set updated_at = '{datetime.now()}', cur_sys_id = {cur_sys_id}, gram = {gram}, max_sales_amount = {max_sales_amount} where id = {sun["id"]}"
                 cursor.execute(sql)
                 db.commit()
                 state = State()
@@ -300,7 +299,7 @@ def service_out(form, handler):
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, str)
+    return data
         
 def service_togo(form, handler):
     data = {
@@ -309,6 +308,7 @@ def service_togo(form, handler):
     try:
         sun = form.get("sun")
         gram = form.get("gram")
+        cur_sys_id = form.get("currency_id")
         max_sales_amount = form.get("max_sales_amount")
         db = handler.server.db
         cursor = db.cursor(dictionary=True)
@@ -331,7 +331,7 @@ def service_togo(form, handler):
                     }
                 else:
                     # update total value with currency_id and max_sales_amount
-                    sql = f"update suns set updated_at = '{datetime.now()}', gram = {gram}, max_sales_amount = {max_sales_amount} where id = {sun["id"]}"
+                    sql = f"update suns set updated_at = '{datetime.now()}', cur_sys_id={cur_sys_id}, gram = {gram}, max_sales_amount = {max_sales_amount} where id = {sun["id"]}"
                     cursor.execute(sql)
                     db.commit()
                     state = State()
@@ -348,22 +348,24 @@ def service_togo(form, handler):
     except Exception as e:
         data["success"] = False
         data["data"] = str(e)
-    return json.dumps(data, default=str)
+    return data
         
 def refresh_db(db):
     try:
         cursor = db.cursor(dictionary = True)
-        sql = f"DELETE * FROM suns WHERE updated_at <= DATE_SUB(NOW(), INTERVAL, {os.getenv("REFRESH_MONTH")} MONTH)"
+        sql = f"DELETE FROM suns WHERE updated_at <= DATE_SUB(NOW(), INTERVAL {os.getenv("REFRESH_MONTH")} MONTH)"
         cursor.execute(sql)
         db.commit()
         
-        sql = f"DELETE * FROM onetime_suns WHERE updated_at <= DATE_SUB(NOW(), INTERVAL, {os.getenv("REFRESH_MONTH")} MONTH)"
+        sql = f"DELETE FROM onetime_suns WHERE updated_at <= DATE_SUB(NOW(), INTERVAL {os.getenv("REFRESH_MONTH")} MONTH)"
         cursor.execute(sql)
         db.commit()
     except Exception as e:
         print(e)
         return { "success": False }
-    return { "success": True }
+    return { 
+            "success": True 
+    }
 
         
 def life_signal(handler, form, db):
