@@ -11,12 +11,17 @@ from server.tasks.scheduler import start_scheduler
 
 load_dotenv()
 
-async def main():  
+async def main():
+    print(os.getenv("DB_URL"))  
+    print(os.getenv("DB_USERNAME"))  
+    print(os.getenv("DB_PASSWORD"))  
+    print(os.getenv("DB_NAME"))  
     db = mysql.connector.connect(
         host=os.getenv("DB_URL"),
         user=os.getenv("DB_USERNAME"),
         password=os.getenv("DB_PASSWORD"),
         database=os.getenv("DB_NAME"),
+        # database="minifooko_db_dev",
         auth_plugin="mysql_native_password"
     )
     # HTTP server runs in a separate thread

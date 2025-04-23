@@ -20,7 +20,7 @@ class MyHTTPServer(HTTPServer):
 def run_http_server(db):
     try:
         server_address = (os.getenv("SERVER_URL"), int(os.getenv("SERVER_PORT")))
-        
+        print(server_address)
         httpd = MyHTTPServer(server_address, RouterHandler, db)
         print(f"🌐 Serving on http://{os.getenv('SERVER_URL')}:{os.getenv('SERVER_PORT')} (Press Ctrl+C to stop)")
         httpd.serve_forever()

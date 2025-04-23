@@ -184,7 +184,7 @@
         let currentWeight = 0;
         let currencies = []
 
-        const apiEndPoint = "/owners"
+        const apiEndPoint = "/python/owners"
         const socketServerUrl = "ws://localhost:8765"
         const connectionStatus = document.getElementById('connectionStatus');
         const statusIndicator = document.getElementById('statusIndicator');
@@ -354,7 +354,7 @@
                 reverseButtons: true
             })
             .then(result => {
-                window.location.assign("/owners/index") 
+                window.location.assign("/python/owners/index") 
             })
             
         }
