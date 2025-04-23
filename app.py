@@ -12,10 +12,6 @@ from server.tasks.scheduler import start_scheduler
 load_dotenv()
 
 async def main():
-    print(os.getenv("DB_URL"))  
-    print(os.getenv("DB_USERNAME"))  
-    print(os.getenv("DB_PASSWORD"))  
-    print(os.getenv("DB_NAME"))  
     db = mysql.connector.connect(
         host=os.getenv("DB_URL"),
         user=os.getenv("DB_USERNAME"),
