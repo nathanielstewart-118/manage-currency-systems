@@ -1,6 +1,5 @@
 from ..shared.utils import get_content
 from pathlib import Path
-import json
 from dotenv import load_dotenv
 import os
 

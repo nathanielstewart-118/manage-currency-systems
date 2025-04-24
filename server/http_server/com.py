@@ -191,7 +191,7 @@ def req_sun(form, handler):
                     "message": "registered",
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
                 }
-                sql = f"Update suns set updated_at = '{datetime.now()}' where id = {sun["id"]}"
+                sql = f"""Update suns set updated_at = '{datetime.now()}' where id = {sun["id"]}"""
             else:
                 new_sun = gen_sun(1, cur_sys_id)
                 data = {
@@ -334,11 +334,18 @@ def service_togo(form, handler):
                     sql = f"update suns set updated_at = '{datetime.now()}', cur_sys_id={cur_sys_id}, gram = {gram}, max_sales_amount = {max_sales_amount} where id = {sun["id"]}"
                     cursor.execute(sql)
                     db.commit()
+                    
+                    sql = f"SELECT cur_sys_id, uid FROM suns where id = {sun["id"]}"
+                    cursor.execute(sql)
+                    results = db.fetchall()
+                    uid, cur_sys_id = results[0]["uid"], results[0]["cur_sys_id"] if len(results) == 1 else "", "" 
                     state = State()
                     if state.service_togo_semaphore:
                         state.service_togo_semaphore = False
                         data = {
-                            "success": True
+                            "success": True,
+                            "uid": uid,
+                            "cur_sys_id": cur_sys_id
                         }
             else:
                 data = {

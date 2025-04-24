@@ -8,7 +8,7 @@ connected_clients = set()
 async def websocket_handler(websocket):
     connected_clients.add(websocket)
     # await websocket.send(json.dumps({"msg": "Hi, welcome!"}))
-    # print("new connections")
+    print("new connections")
     try:
         async for message in websocket:
             print(f"WebSocket received: {message}")

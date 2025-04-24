@@ -56,11 +56,11 @@ def handle_supplier_request(db, form):
             }
         else:
             owner = owners[0]
-            sql = f"SELECT * FROM terminals WHERE JSON_CONTAINS('{owner["terminals"]}', JSON_QUOTE(terminals.tid))"
+            sql = sql = f"""SELECT * FROM terminals WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE({terminals.tid}))"""
             cursor.execute(sql)
             terminals = cursor.fetchall()
             
-            sql = f"SELECT * FROM restocks WHERE JSON_CONTAINS('{owner["terminals"]}', JSON_QUOTE(restocks.tid))"
+            sql = f"""SELECT * FROM restocks WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE({restocks.tid}))"""
             cursor.execute(sql)
             restocks = cursor.fetchall()
 

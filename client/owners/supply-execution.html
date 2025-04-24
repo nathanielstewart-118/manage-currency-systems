@@ -185,7 +185,8 @@
         let currencies = []
 
         const apiEndPoint = "/python/owners"
-        const socketServerUrl = "ws://localhost:8765"
+        // const socketServerUrl = "ws://localhost:8765"
+        const socketServerUrl = "ws://localhost"
         const connectionStatus = document.getElementById('connectionStatus');
         const statusIndicator = document.getElementById('statusIndicator');
         const statusIcon = document.getElementById('statusIcon');
@@ -278,7 +279,11 @@
             
             // showMessage('Connecting to server...', 'info');
             updateStatus('connecting');
-            socket = new WebSocket(socketServerUrl);
+            try {
+                socket = new WebSocket(socketServerUrl);
+            } catch (error) {
+                console.log(error)
+            }
             
             socket.onopen = function(e) {
                 console.log(e)

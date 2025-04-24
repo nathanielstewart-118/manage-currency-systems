@@ -43,6 +43,8 @@
   const results = document.getElementById('results');
   let address = ""
 
+  const socket = new WebSocket("ws://192.168.149.232:8765")
+
   searchBtn.addEventListener('click', async () => {
     address = document.getElementById('addressInput').value.trim();
     if (!address) return;
