@@ -79,7 +79,13 @@
     <link href="https://fonts.googleapis.com/css?family=Libre+Barcode+128" rel="stylesheet">
 </head>
 <body>
-    <h1>Supply Execution Page</h1>
+    <div class="d-flex justify-content-between">
+        <h1>Supply Execution Page</h1>
+        <button class="btn btn-success btn-sm" onclick="handleClickConfirm()">
+            Confirm
+        </button>
+
+    </div>
     
     <div class="product-info">
         <h2>Product Details</h2>
@@ -104,16 +110,6 @@
     
     <div id="confirm-section" style="display: none;">
         <button id="confirm-button">Confirm</button>
-    </div>
-
-    <div class="d-flex align-items-center">
-        <div id="statusIcon" class="status-icon disconnected">
-            <i class="bi bi-x-lg"></i>
-        </div>
-        <div>
-            <h5 class="mb-1">Connection Status:</h5>
-            <p id="connectionStatus" class="connection-status">Not connected</p>
-        </div>
     </div>
 
     <div id="message-area"></div>
@@ -183,7 +179,7 @@
         let oneTimeSunBarcode = '';
         let currentWeight = 0;
         let currencies = []
-
+        let onetime_sun
         const apiEndPoint = "/python/owners"
         // const socketServerUrl = "ws://localhost:8765"
         const socketServerUrl = "ws://localhost"
@@ -208,18 +204,15 @@
                 // showMessage('Error: No terminal ID (tid) specified in URL', 'error');
                 return;
             }
-                        
             document.getElementById('tid-display').textContent = currentTid;
             
             // Load product data (in a real app, this would be from an API)
             loadProductData(currentTid, ownerSun);
             
             // Set up socket connection
-            setupSocketConnection();
             
             // Set up event listeners for editable fields
             // Confirm button handler
-            document.getElementById('confirm-button').addEventListener('click', handleConfirm);
         });
         
         // Function to load product data (simulated)
@@ -244,9 +237,9 @@
         
         const displayData = currentProductData => {
             document.getElementById('product-name').textContent = currentProductData.terminal.product_name;
-            current_weight = currentProductData.restocks.length > 0 ? currentProductData.restocks[0]["current_weight"] : 0
-            document.getElementById('current-weight').textContent = current_weight;
-            
+            currentWeight = currentProductData.restocks.length > 0 ? currentProductData.restocks[0]["current_weight"] : 0
+            document.getElementById('current-weight').textContent = currentWeight;
+            onetime_sun = currentProductData.onetime_sun
             const barcodeImg = document.getElementById('barcode-img');
             barcodeImg.setAttribute("src", "data:image/png;base64," + currentProductData.barcode)
         }
@@ -272,84 +265,6 @@
             showMessage('Changes saved locally (would save to server in production)', 'info');
         }
         
-        // Function to set up WebSocket connection
-        function setupSocketConnection() {
-            // In a real app, you'd connect to your actual WebSocket server
-            // This is just a simulation of the behavior
-            
-            // showMessage('Connecting to server...', 'info');
-            updateStatus('connecting');
-            try {
-                socket = new WebSocket(socketServerUrl);
-            } catch (error) {
-                console.log(error)
-            }
-            
-            socket.onopen = function(e) {
-                console.log(e)
-                updateStatus('connected');
-                // showMessage('Socket connection established', 'success');
-            };
-            
-            socket.onmessage = function(event) {
-                try {
-                    console.log('WebSocket message received:', event.data);
-                    const data = JSON.parse(event.data);
-                    if(data.command == "supply_end" && data.tid == currentTid) {
-                        handleSupplyEnd(data)
-                    }
-                    else if(data.command = "supply_close" && data.tid == currentTid) {
-                        handleSupplyClose(data)
-                    }
-                } catch (e) {
-                    console.error('Error parsing WebSocket message:', e);
-                }
-            };
-            
-            socket.onclose = function(event) {
-                console.log(event)
-                updateStatus("disconnected", "connection disconnected")
-            };
-            
-            socket.onerror = function(error) {
-                console.log(error)
-            };
-        }
-        
-        // Function to handle supply_end command
-        function handleSupplyEnd(data) {
-
-            currencies = [].concat(data.currencies)
-
-            amountInputsWrapperDiv.innerHTML = ""
-            for (let cur of data.currencies) {
-                restocks = data.restocks.filter(one => one.currency_id == cur.id)
-                let max_sales_amount = restocks.length == 1 ? restocks[0]["max_sales_amount"] : 0
-                dom = document.createElement("div")
-                dom.className = "w-75 my-3"
-                dom.innerHTML = '<div class="row align-items-center">' +
-                        '<div class="col-md-6">' +
-                            '<label for="inputPassword6" class="col-form-label"> ' + cur.name + ' </label>' +
-                        '</div>' +
-                        '<div class="col-md-6">' +
-                            '<input type="text" id="currency-' + cur.id + '-input"' + ' value=' + max_sales_amount+ ' class="form-control border-secondary" />' +
-                        '</div>' +
-                    '</div>'
-                amountInputsWrapperDiv.appendChild(dom)
-            }
-            let previous_amount = data.restocks.length > 0 ? data.restocks[0]["current_weight"] : 0
-            let currently_restocked_amount = data.grams ? data.grams : 0
-            let current_amount = previous_amount + currently_restocked_amount
-            previousAmountInput.value = previous_amount
-            currentlyRestockedAmountInput.value = currently_restocked_amount
-            currentAmountInput.value = current_amount
-
-            confirmModal.show()
-
-
-            // Show confirmation section
-        }
-        
         function handleSupplyClose(data) {
             Swal.fire({
                 text: "Supply closed successfully. Redirecting to the index page",
@@ -364,93 +279,27 @@
             
         }
 
-        // Function to handle confirm button click
-        function handleConfirm() {
-            // Display the barcode
-            const barcodeContainer = document.getElementById('barcode-container');
-            barcodeContainer.textContent = oneTimeSunBarcode;
-            barcodeContainer.style.display = 'block';   
-            
-            // Hide confirm button
-            document.getElementById('confirm-section').style.display = 'none';
-            
-            showMessage('Scan this barcode with the terminal to complete the process.', 'success');
-            
-            // Simulate receiving supply_close command after confirmation
-            setTimeout(() => {
-                // simulateSupplyCloseCommand();
-            }, 3000);
-        }
-        
-        
-        // Helper function to show messages
-        function showMessage(message, type) {
-            const messageArea = document.getElementById('message-area');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = "message " + type;
-            messageDiv.textContent = message;
-            messageArea.appendChild(messageDiv);
-            
-            // Auto-scroll to bottom
-            messageArea.scrollTop = messageArea.scrollHeight;
-        }
-    
-        function updateStatus(status, message) {
-            // Clear all status classes first
-            connectionStatus.classList.remove('connecting', 'connected', 'disconnected', 'error');
-            statusIcon.className = 'status-icon';
-            
-            // Remove all icon classes
-            const iconClasses = Array.from(statusIcon.querySelector('i').classList).filter(c => c.startsWith('bi-'));
-            iconClasses.forEach(c => statusIcon.querySelector('i').classList.remove(c));
-            
-            // Update based on status
-            switch(status) {
-                case 'connecting':
-                    connectionStatus.textContent = 'Connecting to server...';
-                    connectionStatus.classList.add('connecting');
-                    statusIcon.classList.add('connecting');
-                    statusIcon.querySelector('i').classList.add('bi-arrow-repeat', 'bi-spin');
-                    break;
-                case 'connected':
-                    connectionStatus.textContent = 'Connection established';
-                    connectionStatus.classList.add('connected');
-                    statusIcon.classList.add('connected');
-                    statusIcon.querySelector('i').classList.add('bi-check-lg');
-                    break;
-                case 'disconnected':
-                    connectionStatus.textContent = 'Disconnected';
-                    connectionStatus.classList.add('disconnected');
-                    statusIcon.classList.add('disconnected');
-                    statusIcon.querySelector('i').classList.add('bi-x-lg');
-                    break;
-                case 'error':
-                    connectionStatus.textContent = message || 'Connection error';
-                    connectionStatus.classList.add('error');
-                    statusIcon.classList.add('error');
-                    statusIcon.querySelector('i').classList.add('bi-exclamation-lg');
-                    break;
-                default:
-                    connectionStatus.textContent = message || 'Not connected';
-                    statusIcon.querySelector('i').classList.add('bi-plug');
-            }
-
-            // Update timestamp
-            // lastUpdated.textContent = new Date().toLocaleTimeString();
+        // handler of confirm button click
+        const handleClickConfirm = () => {
+            fetch(apiEndPoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    command: "get_restock",
+                    onetime_sun: onetime_sun,
+                    target_tid: "t2",
+                    tid: "t1",
+                    auth: "7b3291a872c822a86045a00b6087fc92c315136c51fd9aab0dc22ac9e966"
+                })
+            })
+            .then(response => response.json())
+            .then(data => changeModalData(data.data))
+            .catch(error => console.log(error))
         }
 
-        // Add message to log
-        function addLogMessage(message, type = 'info') {
-            const logEntry = document.createElement('div');
-            logEntry.className = "log-entry text-" + type;
-            
-            const timestamp = new Date().toLocaleTimeString();
-            logEntry.innerHTML = "<small>[" + timestamp + "]</small>" + message;
-            
-            messageLog.appendChild(logEntry);
-            messageLog.scrollTop = messageLog.scrollHeight;
-        }
-
+        // When click save button on the modal after entering the max_sales_amount, then save values into restocks table
         const handleClickSave = () => {
             let amounts = []
             Swal.fire({
@@ -480,7 +329,7 @@
                             body: JSON.stringify({
                                 command: "save_max_sales_amount",
                                 current_weight: currentWeight,
-                                tid: currentTid,
+                                target_tid: currentTid,
                                 currency_amounts: amounts,
                             })
                         })
@@ -498,6 +347,46 @@
                         console.log("Canceled");
                     }
                 });
+            
+        }
+        // When clicks Confirm Button after supply_end, show modal with updated stock amount, or inform user restocking is not finished yet
+        const changeModalData = data => {
+            console.log(data)
+            if(data.grams == currentWeight) {
+                Swal.fire({
+                    text: "The lid has not been closed yet.",
+                    icon: 'info',
+                    showCancelButton: false,
+                    confirmButtonText: 'OK',
+                    reverseButtons: true
+                })
+                return
+            }
+            currencies = [ ...data.currencies ]
+            amountInputsWrapperDiv.innerHTML = ""
+            for (let cur of data.currencies) {
+                restocks = data.restocks.filter(one => one.currency_id == cur.id)
+                let max_sales_amount = restocks.length == 1 ? restocks[0]["max_sales_amount"] : 0
+                dom = document.createElement("div")
+                dom.className = "w-75 my-3"
+                dom.innerHTML = '<div class="row align-items-center">' +
+                        '<div class="col-md-6">' +
+                            '<label for="inputPassword6" class="col-form-label"> ' + cur.name + ' </label>' +
+                        '</div>' +
+                        '<div class="col-md-6">' +
+                            '<input type="text" id="currency-' + cur.id + '-input"' + ' value=' + max_sales_amount+ ' class="form-control border-secondary" />' +
+                        '</div>' +
+                    '</div>'
+                amountInputsWrapperDiv.appendChild(dom)
+            }
+            let previous_amount = currentWeight
+            let current_amount = data.grams ? data.grams : 0
+            let currently_restocked_amount = current_amount - previous_amount
+            previousAmountInput.value = previous_amount
+            currentlyRestockedAmountInput.value = currently_restocked_amount
+            currentAmountInput.value = current_amount
+
+            confirmModal.show()
             
         }
     </script>

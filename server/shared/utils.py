@@ -66,7 +66,7 @@ def gen_random_digits(number):
 
 def gen_barcode(data):
     barcode_image = Code39(data, writer=ImageWriter())
-    print(data)
+    print("this is after barcode init",data)
     buffer = BytesIO()
     barcode_image.write(buffer)
     # barcode_class(data, writer=ImageWriter()).write(buffer)

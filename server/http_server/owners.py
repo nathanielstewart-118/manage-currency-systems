@@ -1,4 +1,3 @@
-import asyncio
 from dotenv import load_dotenv
 import os
 import json
@@ -39,6 +38,8 @@ def handle_post(handler, form):
         result = handle_supply_close(handler.server.db, form)
     elif command == "save_max_sales_amount":
         result = handle_save_max_amounts(handler.server.db, form)
+    elif command == "get_restock":
+        result = handle_get_restock(handler.server.db, form)
         
     return result
 
@@ -49,18 +50,18 @@ def handle_supplier_request(db, form):
         sql = f"select * from owners where owner_sun = '{owner_sun}'"
         cursor.execute(sql)
         owners = cursor.fetchall()
-        if len(owners) == 0 or len(owners) > 1:
+        if len(owners) != 1:
             data = {
                 "success": False,
                 "data": "Incorrect owner_sun"
             }
         else:
             owner = owners[0]
-            sql = sql = f"""SELECT * FROM terminals WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE({terminals.tid}))"""
+            sql = sql = f"""SELECT * FROM terminals WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE(terminals.tid))"""
             cursor.execute(sql)
             terminals = cursor.fetchall()
-            
-            sql = f"""SELECT * FROM restocks WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE({restocks.tid}))"""
+            print(terminals)
+            sql = f"""SELECT * FROM restocks WHERE JSON_CONTAINS('{owner.get("terminals")}', JSON_QUOTE(restocks.tid))"""
             cursor.execute(sql)
             restocks = cursor.fetchall()
 
@@ -80,66 +81,76 @@ def handle_supplier_request(db, form):
     
     
 def handle_supply_open(db, form):
-    owner_sun = form.get("owner_sun")
-    target_tid = form.get("target_tid")
-    onetime_sun = gen_sun(3, "")
-    cursor = db.cursor(dictionary=True)
-    sql = f"INSERT INTO onetime_suns(onetime_sun, tid, owner_sun, created_at, updated_at) VALUES('{onetime_sun}', '{target_tid}', '{owner_sun}', '{datetime.now()}', '{datetime.now()}')"
-    cursor.execute(sql)
-    db.commit()    
-    sql = f"SELECT * FROM restocks WHERE tid = '{target_tid}'"
-    cursor.execute(sql)
-    restocks = cursor.fetchall()
-    sql = f"SELECT * FROM terminals WHERE tid = '{target_tid}'"
-    cursor.execute(sql)
-    terminals = cursor.fetchall()
-    terminal = terminals[0] if len(terminals) == 1 else {}
-    
-    return {
-        "success": True,
-        "data": {
-            "restocks": restocks,
-            "onetime_sun": onetime_sun,
-            "barcode": gen_barcode(onetime_sun),
-            "terminal": terminal                
+    try:
+        owner_sun = form.get("owner_sun")
+        target_tid = form.get("target_tid")
+        onetime_sun = gen_sun(3, "")
+        cursor = db.cursor(dictionary=True)
+        sql = f"INSERT INTO onetime_suns(onetime_sun, tid, owner_sun, created_at, updated_at) VALUES('{onetime_sun}', '{target_tid}', '{owner_sun}', '{datetime.now()}', '{datetime.now()}')"
+        cursor.execute(sql)
+        db.commit()    
+        sql = f"SELECT * FROM restocks WHERE tid = '{target_tid}'"
+        cursor.execute(sql)
+        restocks = cursor.fetchall()
+        sql = f"SELECT * FROM terminals WHERE tid = '{target_tid}'"
+        cursor.execute(sql)
+        terminals = cursor.fetchall()
+        terminal = terminals[0] if len(terminals) == 1 else {}
+        return {
+            "success": True,
+            "data": {
+                "restocks": restocks,
+                "onetime_sun": onetime_sun,
+                "barcode": gen_barcode(onetime_sun),
+                "terminal": terminal                
+            }
         }
-    }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": str(e)
+        }
 
 def handle_supply_start(db, form):
     onetime_sun = form.get("onetime_sun")
     tid = form.get("tid")
     cursor = db.cursor(dictionary=True)
-    sql = f"select * from onetime_suns where onetime_sun = '{onetime_sun}' and tid = '{tid}'"
-    cursor.execute(sql)
-    results = cursor.fetchall()
-    return { "success": True } if len(results) == 0 else { "success": False }
-    
-    
-def handle_supply_end(db, form):
-    onetime_sun = form.get("onetime_sun")
-    tid = form.get("tid")
-    current_weight = form.get("gram")
-    cursor = db.cursor(dictionary=True)
-    sql = f"SELECT current_weight, max_sales_amount,currency_id, tid FROM restocks WHERE tid = '{tid}'"
-    cursor.execute(sql)
-    results = cursor.fetchall()
-    tid = form.get("tid")
     sql = "SELECT * FROM currencies"
     cursor.execute(sql)
     currencies = cursor.fetchall()
-    data = json.dumps({
-        "command": "supply_end",
-        "currencies": currencies,   
-        "grams": current_weight,
-        "onetime_sun": onetime_sun,
-        "tid": tid,
-        "restocks": results
-    }, default=str)    
-    asyncio.run(send_to_all(data))
-    return {
-        "success": True,
-        "message": "Supply end processed successfully"
-    }
+    for cur in currencies:
+        sql = f"SELECT * FROM restocks WHERE currency_id = {cur["id"]} and tid='{tid}'"
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        if len(results) > 0:
+            continue
+        sql = f"INSERT INTO restocks(tid, current_weight, currency_id, max_sales_amount, created_at, updated_at) VALUES('{tid}', 0, {cur["id"]}, 0, '{datetime.now()}', '{datetime.now()}')"
+        cursor.execute(sql)
+        db.commit()
+    sql = f"select * from onetime_suns where onetime_sun = '{onetime_sun}' and tid = '{tid}'"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    print(results)
+    return { "success": True } if len(results) == 1 else { "success": False }
+    
+    
+def handle_supply_end(db, form):
+    try:
+        tid = form.get("tid")
+        current_weight = form.get("gram")
+        cursor = db.cursor(dictionary=True)
+        sql = f"UPDATE stocks SET current_weight={current_weight} WHERE tid = '{tid}'"
+        cursor.execute(sql)
+        db.commit()
+        return {
+            "success": True,
+            "message": "Supply end processed successfully"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
 
 def handle_supply_close(db, form):
     try:
@@ -155,7 +166,6 @@ def handle_supply_close(db, form):
             "tid": tid,
         })
         
-        asyncio.run(send_to_all(msg))
     except Exception as e:
         print(e)
         return {
@@ -171,22 +181,22 @@ def handle_supply_close(db, form):
 def handle_save_max_amounts(db, form):
     data = { "success": True }
     try:
-        tid = form.get("tid")
+        target_tid = form.get("target_tid")
         current_weight = form.get('current_weight')
         max_amounts = form.get("currency_amounts")
         cursor = db.cursor(dictionary=True)
         for amount in max_amounts:
             currency_id = amount.get("currency_id")
             max_sales_amount = amount.get("max_sales_amount")
-            sql = f"SELECT * FROM restocks WHERE currency_id = {currency_id} AND tid = '{tid}'"
+            sql = f"SELECT * FROM restocks WHERE currency_id = {currency_id} AND tid = '{target_tid}'"
             cursor.execute(sql)
             records = cursor.fetchall()
             if len(records) == 1:
-                sql = f"UPDATE restocks SET max_sales_amount = {max_sales_amount}, current_weight = {current_weight}, updated_at = '{datetime.now()}' WHERE currency_id = {currency_id} and tid = '{tid}'"
+                sql = f"UPDATE restocks SET max_sales_amount = {max_sales_amount}, current_weight = {current_weight}, updated_at = '{datetime.now()}' WHERE currency_id = {currency_id} and tid = '{target_tid}'"
                 cursor.execute(sql)
                 db.commit()
             elif len(records) == 0:
-                sql = f"INSERT INTO restocks(tid, currency_id, current_weight, max_sales_amount, created_at, updated_at) VALUES('{tid}', {currency_id}, {current_weight}, {max_sales_amount}, '{datetime.now()}', '{datetime.now()}')"
+                sql = f"INSERT INTO restocks(tid, currency_id, current_weight, max_sales_amount, created_at, updated_at) VALUES('{target_tid}', {currency_id}, {current_weight}, {max_sales_amount}, '{datetime.now()}', '{datetime.now()}')"
                 cursor.execute(sql)
                 db.commit()
             else:
@@ -195,7 +205,35 @@ def handle_save_max_amounts(db, form):
                     "data": "Several Records Already Exist"
                 }
     except Exception as e:
-        print(e)
         data = { "success": False, "data": str(e) }
     return data    
 
+def handle_get_restock(db, form):
+    try:
+        onetime_sun = form.get("onetime_sun")
+        target_tid = form.get("target_tid")
+        cursor = db.cursor(dictionary=True)
+        sql = f"SELECT current_weight, max_sales_amount,currency_id, tid FROM restocks WHERE tid = '{target_tid}'"
+        cursor.execute(sql)
+        restocks = cursor.fetchall()
+        sql = "SELECT * FROM currencies"
+        cursor.execute(sql)
+        currencies = cursor.fetchall()
+        
+        current_weight = restocks[0]["current_weight"] if len(restocks) > 0 else 0
+        return {
+            "success": True,
+            "data": {
+                "currencies": currencies,   
+                "grams": current_weight,
+                "onetime_sun": onetime_sun,
+                "tid": target_tid,
+                "restocks": restocks
+            }   
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": str(e)
+        }    
+    
