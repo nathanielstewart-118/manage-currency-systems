@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Log Page</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    referrerpolicy="no-referrer"
+  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card-custom {
+      transition: transform 0.2s ease-in-out;
+    }
+    .card-custom:hover {
+      transform: scale(1.02);
+    }
+    div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+      margin-bottom: 1rem
+    }
+    .ellipsis-text {
+      max-width: 200px; /* Adjust based on your needs */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ellipsis-text:hover {
+      overflow: visible;
+      white-space: normal;
+      height: auto;
+      position: absolute;
+      background-color: white;
+      z-index: 1000;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-5">
+  <!-- Input Section -->
+   <div class="d-flex justify-content-between">
+    <h2 class="mb-4">Logs Data</h2>
+    
+   </div>
+   <div class="w-50 d-flex justify-content-center border-secondary mx-auto my-5">
+    <div class="col">
+      <label class="form-control text-end" for="monthPicker"> Month: </label>
+    </div>
+    <div class="col">
+      <input type="text" id="monthPicker" class="form-control border-info" onchange="handleChangeMonth(event.target.value)" placeholder="Select month">
+    </div>
+   </div>
+
+  <div class="card text-white border-primary mb-3">
+    <div class="card-header text-primary">Logs</div>
+    <div class="card-body">
+      <table id="logs-table" class="table table-striped" style="width:100%">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>IP Address</th>
+            <th>Terminal ID</th>
+            <th>Command</th>
+            <th>Received Data</th>
+            <th>Sent Data</th>
+            <th>Created_at</th>
+            <th>Last_Access</th>
+          </tr>
+        </thead>
+        <tbody id="logs-table-tbody"></tbody>
+      </table>
+    
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div id="results" class="row gy-4"></div>
+</div>
+
+<!-- Bootstrap JS and basic logic -->
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<script>
+  const tableDom = document.getElementById("logs-table")
+  const apiEndPoint = "/~mains/cgi-bin/admin.py"
+  const tableCellMaxLength = 50
+
+  document.addEventListener("DOMContentLoaded", () => {
+    flatpickr("#monthPicker", {
+      defaultDate: "today", 
+      plugins: [
+        new monthSelectPlugin({
+          shorthand: true, // display in shorthand format (e.g., Jan, Feb)
+          dateFormat: "Y-m", // format for storage
+          // altFormat: "F Y", // format for display
+          defaultDate: new Date(),
+        })
+      ]
+      
+    });
+
+    handleChangeMonth($("#monthPicker").val())
+  })
+
+  const handleReceiveData = data => {
+    console.log(data)
+    displayTable(data.data.logs, "logs-table-tbody", 'logs-table')
+  }
+
+  const displayTable = (data, tbodyDomId, tableDomId) => {
+    console.log("This is to dispay table")
+    if ($.fn.DataTable.isDataTable(`#${tableDomId}`)) {
+      $(`#${tableDomId}`).DataTable().clear().destroy();
+    }
+    const displayData = data.map((one, index) => {
+      const newData = {
+        no: index + 1,
+        ipAddress: one.ip_address ?? "",
+        command: one.command ?? "",
+        uid: one.uid ?? "",
+        tid: one.tid ?? "",
+        received: one.received_json ?? "",
+        sent: one.sent_json ?? "",
+        lastAccess: one.updated_at ?? "",
+        createdAt: one.created_at ?? "",
+      }
+      dom = "<tr><td>" + 
+        newData.no +  "</td>" + 
+        "<td>" + newData.ipAddress + "</td>" + 
+        "<td>" + newData.tid + "</td>" + 
+        "<td>" + newData.command + "</td>" + 
+        "<td>" + newData.received + "</td>" + 
+        "<td>" + newData.sent + "</td>" + 
+        "<td>" + newData.lastAccess + "</td>" + 
+        "<td>" + newData.createdAt + 
+
+        "</td></tr>"
+      $(`#${tbodyDomId}`).append(dom)
+
+    })
+    
+    $(`#${tableDomId}`).DataTable({
+        responsive: true,          // Enable responsive design
+        pagingType: 'full_numbers', // Different pagination style
+        lengthMenu: [5, 10, 25, 50, 100], // Show entries dropdown options
+        order: [[0, 'asc']],      // Initial sort by age column (ascending)
+        dom: 'Bfrtip',             // Add buttons for export
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        responsive: true,
+        columnDefs: [
+        {
+          targets: [4, 5],
+          createdCell: function (td, cellData) {
+            td.setAttribute("class", "ellipsis-text")
+            td.innerHTML = cellData;
+          }
+        }
+      ]
+
+    });
+
+    
+    
+
+  }
+
+  const handleChangeMonth = date => {
+
+    const formData = new FormData()
+    formData.append("date", date)
+    formData.append("command", "get_logs")
+    fetch(apiEndPoint, {
+      method: "POST",
+      body: new URLSearchParams({
+        date,
+        command: "get_logs"
+      }),
+    })
+    .then(response => response.json())
+    .then(data => displayTable(data.logs, "logs-table-tbody", "logs-table"))
+    .catch(console.log)
+
+
+  }
+
+
+</script>
+
+</body>
+</html>

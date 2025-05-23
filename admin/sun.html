@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Service Utilize Number (SUN) Page</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  referrerpolicy="no-referrer"
+/>
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .card-custom {
+      transition: transform 0.2s ease-in-out;
+    }
+    .card-custom:hover {
+      transform: scale(1.02);
+    }
+    div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+      margin-bottom: 1rem
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-5">
+  <!-- Input Section -->
+   <div class="d-flex justify-content-between">
+    <h2 class="mb-4">Sun Data</h2>
+    <button class="btn btn-primary btn-sm my-2" onclick="handleClickRefreshDB()"> <i class="fas fa-rotate mx-2"></i>Refresh DB </button>
+  
+   </div>
+  <div class="card text-white border-primary mb-3">
+    <div class="card-header text-primary">Currently Issued Suns</div>
+    <div class="card-body">
+      <table id="valid-suns-table" class="table table-striped" style="width:100%">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Sun</th>
+            <th>Terminal ID</th>
+            <th>CurSysID</th>
+            <th>UID</th>
+            <th>Created_at</th>
+            <th>Last_Access</th>
+          </tr>
+        </thead>
+        <tbody id="valid-suns-table-tbody"></tbody>
+      </table>
+    
+    </div>
+  </div>
+
+  <div class="card text-white border-warning mb-3">
+    <div class="card-header text-warning">Pickled Que</div>
+    <div class="card-body">
+      <table id="invalid-suns-table" class="table table-striped" style="width:100%">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Sun</th>
+            <th>Terminal ID</th>
+            <th>CurSysID</th>
+            <th>UID</th>
+            <th>Created_at</th>
+            <th>Last_Access</th>
+          </tr>
+        </thead>
+        <tbody id="invalid-suns-table-tbody"></tbody>
+      </table>
+    
+    </div>
+  </div>
+  <!-- Results Section -->
+  <div id="results" class="row gy-4"></div>
+</div>
+
+<!-- Bootstrap JS and basic logic -->
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+  const searchBtn = document.getElementById('searchBtn');
+  const results = document.getElementById('results');
+  const tableDom = document.getElementById("suns-table")
+  const apiEndPoint = "/~mains/cgi-bin/admin.py"
+  const tbody = document.getElementById("suns-table-tbody")
+  const comApiEndPoint = "/~mains/cgi-bin/com.py"
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const formData = new FormData()
+    formData.append("command", "get_suns")
+    formData.append("tid", "t1")
+    formData.append("auth", "7b3291a872c822a86045a00b6087fc92c315136c51fd9aab0dc22ac9e966")
+    fetch(apiEndPoint, {
+      method: "POST",
+      body:formData
+    })
+    .then(response => response.json())
+    .then(handleReceiveData)
+    .catch(error => console.log(error))
+
+  })
+ 
+  const handleReceiveData = data => {
+    console.log(data)
+    displayTable(data.data.valid_suns, "valid-suns-table-tbody", 'valid-suns-table')
+    displayTable(data.data.invalid_suns, "invalid-suns-table-tbody", 'invalid-suns-table')
+  }
+
+  const displayTable = (data, tbodyDomId, tableDomId) => {
+    console.log(data, tableDomId)
+    const displayData = data.map((one, index) => {
+      const newData = {
+        no: index + 1,
+        sun: one.sun ? one.sun : one.onetime_sun ? one.onetime_sun : "",
+        curSysID: one.cur_sys_id ? one.cur_sys_id : "",
+        uid: one.uid ? one.uid : "",
+        tid: one.tid ? one.tid : "",
+        lastAccess: one.updated_at,
+        createdAt: one.created_at,
+      }
+      dom = "<tr><td>" + 
+        newData.no +  "</td>" + 
+        "<td>" + newData.sun + "</td>" + 
+        "<td>" + newData.tid + "</td>" + 
+        "<td>" + newData.curSysID + "</td>" + 
+        "<td>" + newData.uid + "</td>" + 
+        "<td>" + newData.createdAt + "</td>" + 
+        "<td>" + newData.lastAccess + 
+
+        "</td></tr>"
+      $(`#${tbodyDomId}`).append(dom)
+
+    })
+    $(`#${tableDomId}`).DataTable({
+        responsive: true,          // Enable responsive design
+        pagingType: 'full_numbers', // Different pagination style
+        lengthMenu: [5, 10, 25, 50, 100], // Show entries dropdown options
+        order: [[3, 'asc']],      // Initial sort by age column (ascending)
+        dom: 'Bfrtip',             // Add buttons for export
+        buttons: [
+            'copy', 'csv', 'excel', 'pdf', 'print'
+        ]
+    });
+
+  }
+
+  const handleClickRefreshDB = () => {
+    const formData = new FormData()
+    formData.append("command", "refresh_db")
+    formData.append("tid", "t4")
+    formData.append("auth", "59a44cd0d3b545fb19844445fd7361fd4c21ce87eae7da9301153460a1b3")
+
+    // fetch(apiEndPoint, {
+    //   method: "POST",
+    //   body: JSON.stringify({
+    //     command: "supply_end",
+    //     sun: "10372410",
+    //     tid: "t4",
+    //     owner_sun: "00000000",
+    //     auth: "59a44cd0d3b545fb19844445fd7361fd4c21ce87eae7da9301153460a1b3",
+    //     gram: 600,
+    //   })
+    // })
+    fetch(comApiEndPoint, {
+      method: 'POST',
+      body: new URLSearchParams({
+        command: "refresh_db",
+        tid: "t4",
+        auth: "59a44cd0d3b545fb19844445fd7361fd4c21ce87eae7da9301153460a1b3"
+      }),
+    })
+    .then(response=> response.json())
+    .then(data => console.log(data))
+    .catch(error => console.log(error))
+  }
+</script>
+
+</body>
+</html>
